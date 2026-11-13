@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GreenTrack Findings</title>
+<meta name="description" content="California 2025 energy, weather and air-quality findings from the GreenTrack data pipeline">
+<style>
+:root {
+  color-scheme: light;
+  --surface-0:#f4f3f0; --surface-1:#fcfcfb; --border:#e3e1dc;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#7a7873; --grid:#e8e6e1;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --seq-0:#f0efec; --seq-1:#cde2fb; --seq-2:#86b6ef; --seq-3:#3987e5; --seq-4:#1c5cab;
+  --good:#0ca30c; --warning:#fab219; --critical:#d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-0:#111110; --surface-1:#1a1a19; --border:#2e2e2b;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8d8c84; --grid:#2c2c29;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+    --seq-0:#383835; --seq-1:#184f95; --seq-2:#256abf; --seq-3:#3987e5; --seq-4:#86b6ef;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0:#111110; --surface-1:#1a1a19; --border:#2e2e2b;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8d8c84; --grid:#2c2c29;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --seq-0:#383835; --seq-1:#184f95; --seq-2:#256abf; --seq-3:#3987e5; --seq-4:#86b6ef;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--surface-0); color:var(--text-primary);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; }
+main { max-width:1120px; margin:0 auto; padding:24px 16px 64px; }
+header { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; justify-content:space-between; margin-bottom:8px; }
+h1 { font-size:1.8rem; margin:0; letter-spacing:-.01em; }
+h2 { font-size:1.15rem; margin:36px 0 4px; }
+.sub { color:var(--text-secondary); margin:4px 0 0; }
+.muted { color:var(--text-muted); font-size:.85rem; }
+button.theme { background:var(--surface-1); color:var(--text-primary); border:1px solid var(--border); border-radius:8px; padding:6px 12px; cursor:pointer; font:inherit; font-size:.85rem; }
+.phases { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:18px 0 6px; }
+.phase { background:var(--surface-1); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:.8rem; }
+.phase b { display:block; font-size:.85rem; }
+.phase .st { display:inline-flex; gap:4px; align-items:center; color:var(--text-secondary); }
+.dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:16px; }
+.tile { background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:14px; }
+.tile .v { font-size:1.75rem; font-weight:650; letter-spacing:-.01em; }
+.tile .l { color:var(--text-secondary); font-size:.82rem; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.card { background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:16px; margin-top:12px; min-width:0; }
+.card h3 { margin:0 0 2px; font-size:1rem; }
+.card p.note { margin:2px 0 10px; color:var(--text-secondary); font-size:.85rem; }
+svg { display:block; width:100%; height:auto; overflow:visible; }
+svg text { fill:var(--text-secondary); font-size:11px; }
+svg .lbl { fill:var(--text-primary); font-size:11.5px; font-weight:600; }
+.grid-line { stroke:var(--grid); stroke-width:1; }
+.axis { stroke:var(--text-muted); stroke-width:1; }
+.legend { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:.82rem; color:var(--text-secondary); margin:2px 0 8px; }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.legend i { width:12px; height:3px; border-radius:2px; display:inline-block; }
+.legend i.sq { height:10px; width:10px; border-radius:3px; }
+details { margin-top:8px; font-size:.82rem; }
+summary { cursor:pointer; color:var(--text-secondary); }
+table { border-collapse:collapse; width:100%; margin-top:6px; font-size:.8rem; }
+th, td { text-align:left; padding:4px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+.tablewrap { overflow-x:auto; }
+#tip { position:fixed; pointer-events:none; background:var(--surface-1); color:var(--text-primary); border:1px solid var(--border);
+  border-radius:8px; padding:6px 9px; font-size:.8rem; box-shadow:0 4px 14px rgba(0,0,0,.14); opacity:0; transition:opacity .08s; z-index:9; }
+.findings { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; margin-top:12px; }
+.finding { background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+.finding .tag { font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
+.finding b { display:block; margin:2px 0 4px; }
+.finding p { margin:0; color:var(--text-secondary); font-size:.86rem; }
+.status { display:inline-flex; align-items:center; gap:5px; font-size:.8rem; font-weight:600; }
+.recon { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:8px; }
+.recon div { display:flex; justify-content:space-between; gap:8px; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:.83rem; }
+footer { margin-top:40px; color:var(--text-muted); font-size:.8rem; }
+@media (max-width:760px) { .grid2 { grid-template-columns:1fr; } .phases { grid-template-columns:repeat(3,1fr); } h1 { font-size:1.45rem; } }
+</style>
+</head>
+<body>
+<div id="tip"></div>
+<main>
+<header>
+  <div>
+    <h1>GreenTrack — California 2025 findings</h1>
+    <p class="sub">Energy (EIA, CAISO), weather (Open-Meteo, 5 cities) and air quality (OpenAQ, 10 reference monitors), processed by the GreenTrack data pipeline.</p>
+  </div>
+  <button class="theme" id="theme" type="button">Toggle dark / light</button>
+</header>
+
+<div class="phases" id="phases"></div>
+<p class="muted">Phases 1–5 complete and reviewed; Phase 6 (testing and handover) is planned. Data: calendar year 2025, California local time.</p>
+
+<div class="tiles" id="tiles"></div>
+
+<h2>Energy</h2>
+<div class="card">
+  <h3>Renewables and imports by month</h3>
+  <p class="note">Renewable = solar, wind, hydro and geothermal (EIA definition). Share of generation peaks in spring; imports peak in winter.</p>
+  <div class="legend" id="lg-share"></div>
+  <div id="c-share"></div>
+  <details><summary>Show table</summary><div class="tablewrap" id="t-share"></div></details>
+</div>
+<div class="grid2">
+  <div class="card">
+    <h3>2025 net generation by fuel (TWh)</h3>
+    <p class="note">Total 186.3 TWh vs 224.0 TWh demand: California imports the rest. OTH is net negative (battery charging).</p>
+    <div id="c-fuel"></div>
+    <details><summary>Show table</summary><div class="tablewrap" id="t-fuel"></div></details>
+  </div>
+  <div class="card">
+    <h3>Grid demand load factor by month (%)</h3>
+    <p class="note">Average ÷ peak hourly demand. Lowest May–Sep, when afternoon air-conditioning peaks sit far above the daily average.</p>
+    <div id="c-lf"></div>
+    <details><summary>Show table</summary><div class="tablewrap" id="t-lf"></div></details>
+  </div>
+</div>
+
+<h2>Weather and air quality</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>Monthly mean temperature by city (°C)</h3>
+    <p class="note">Inland Fresno and Sacramento swing most; San Francisco least. Statewide 2025 mean 17.1 °C.</p>
+    <div class="legend" id="lg-temp"></div>
+    <div id="c-temp"></div>
+    <details><summary>Show table</summary><div class="tablewrap" id="t-temp"></div></details>
+  </div>
+  <div class="card">
+    <h3>Days with daily mean PM2.5 above 35 µg/m³</h3>
+    <p class="note">A monitoring indicator, not a regulatory determination. LA's worst day was 79.0 µg/m³ on 8 Jan.</p>
+    <div id="c-pm"></div>
+    <details><summary>Show table</summary><div class="tablewrap" id="t-pm"></div></details>
+  </div>
+</div>
+
+<h2>Data quality</h2>
+<div class="card">
+  <h3>A one-hour EIA glitch: 31 Jul 2025, 13:00 local</h3>
+  <p class="note">Hourly demand drops from 29,881 to 11,819 MWh and recovers the next hour; fuel totals disagree with net generation by 8.2 % in the same hour. Kept (validation never changes values) and logged as an open issue.</p>
+  <div id="c-glitch"></div>
+  <details><summary>Show table</summary><div class="tablewrap" id="t-glitch"></div></details>
+</div>
+<div class="grid2">
+  <div class="card">
+    <h3>Issues logged in the final validation run</h3>
+    <p class="note">Accepted = known and expected (decided at the Phase 4 review); open = still worth attention. 0 records failed a hard rule.</p>
+    <div class="legend" id="lg-iss"></div>
+    <div id="c-iss"></div>
+    <details><summary>Show table</summary><div class="tablewrap" id="t-iss"></div></details>
+  </div>
+  <div class="card">
+    <h3>Air-quality coverage: share of 2025 hours with a reading</h3>
+    <p class="note">29 sensor series at 10 AirNow monitors. Dashed line at 90 %.</p>
+    <div id="c-cov"></div>
+    <details><summary>Show table</summary><div class="tablewrap" id="t-cov"></div></details>
+  </div>
+</div>
+<div class="card">
+  <h3>Analytics reconciliation (spec success criterion 4)</h3>
+  <p class="note">Every daily and monthly KPI input is recomputed from the hourly data and compared.</p>
+  <div class="recon" id="recon"></div>
+</div>
+
+<h2>Key findings along the way</h2>
+<div class="findings" id="findings"></div>
+
+<footer>Generated from the GreenTrack database on 12 Nov 2026. Sources: EIA Open Data API v2 (Form EIA-930), Open-Meteo archive, OpenAQ v3. Built by Sriram Ganeshalingam.</footer>
+</main>
+<script>
+const DATA = {"monthly": [{"m": "Jan", "renew_gen": 39.0, "renew_dem": 31.1, "imports": 20.9, "load_factor": 82.8, "demand_twh": 17.78, "gen_twh": 14.16}, {"m": "Feb", "renew_gen": 45.5, "renew_dem": 37.6, "imports": 16.0, "load_factor": 80.5, "demand_twh": 15.61, "gen_twh": 12.9}, {"m": "Mar", "renew_gen": 54.6, "renew_dem": 44.4, "imports": 18.3, "load_factor": 79.8, "demand_twh": 16.59, "gen_twh": 13.49}, {"m": "Apr", "renew_gen": 59.8, "renew_dem": 52.1, "imports": 13.7, "load_factor": 81.2, "demand_twh": 16.39, "gen_twh": 14.3}, {"m": "May", "renew_gen": 60.6, "renew_dem": 54.0, "imports": 11.7, "load_factor": 68.0, "demand_twh": 18.27, "gen_twh": 16.27}, {"m": "Jun", "renew_gen": 57.2, "renew_dem": 51.4, "imports": 10.7, "load_factor": 74.5, "demand_twh": 19.36, "gen_twh": 17.39}, {"m": "Jul", "renew_gen": 53.9, "renew_dem": 48.6, "imports": 9.7, "load_factor": 71.9, "demand_twh": 21.13, "gen_twh": 19.08}, {"m": "Aug", "renew_gen": 45.8, "renew_dem": 40.4, "imports": 10.8, "load_factor": 70.7, "demand_twh": 23.08, "gen_twh": 20.37}, {"m": "Sep", "renew_gen": 42.8, "renew_dem": 35.4, "imports": 15.6, "load_factor": 70.1, "demand_twh": 21.41, "gen_twh": 17.73}, {"m": "Oct", "renew_gen": 44.6, "renew_dem": 36.1, "imports": 18.3, "load_factor": 80.1, "demand_twh": 18.55, "gen_twh": 15.03}, {"m": "Nov", "renew_gen": 35.7, "renew_dem": 28.1, "imports": 20.1, "load_factor": 80.8, "demand_twh": 17.31, "gen_twh": 13.63}, {"m": "Dec", "renew_gen": 43.5, "renew_dem": 28.2, "imports": 29.3, "load_factor": 80.9, "demand_twh": 18.53, "gen_twh": 11.98}], "fuels": [{"fuel": "NG", "twh": 79.01}, {"fuel": "SUN", "twh": 49.65}, {"fuel": "WAT", "twh": 21.35}, {"fuel": "WND", "twh": 19.81}, {"fuel": "NUC", "twh": 17.61}, {"fuel": "OIL", "twh": 0.35}, {"fuel": "GEO", "twh": 0.28}, {"fuel": "COL", "twh": -0.0}, {"fuel": "OTH", "twh": -1.76}], "temps": {"FRE": [8.9, 11.7, 12.6, 18.0, 23.9, 28.5, 29.6, 30.7, 27.2, 18.4, 13.3, 8.2], "LA": [12.6, 13.9, 13.9, 16.6, 20.0, 21.0, 21.9, 24.6, 23.5, 19.3, 16.0, 14.2], "SAC": [8.3, 10.5, 11.8, 16.5, 22.1, 23.6, 23.7, 26.2, 24.5, 17.2, 13.1, 8.2], "SD": [12.8, 14.2, 13.6, 15.0, 17.2, 18.7, 19.8, 21.3, 21.5, 18.6, 15.7, 14.8], "SF": [10.6, 11.1, 11.9, 13.0, 14.7, 14.3, 14.6, 16.6, 17.8, 16.3, 13.3, 10.4]}, "pm25_days": {"FRE": [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "LA": [4, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3], "SAC": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "SD": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "SF": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, "glitch": [{"t": "07-30 00:00", "mwh": 28493}, {"t": "07-30 01:00", "mwh": 26893}, {"t": "07-30 02:00", "mwh": 25515}, {"t": "07-30 03:00", "mwh": 24645}, {"t": "07-30 04:00", "mwh": 23946}, {"t": "07-30 05:00", "mwh": 23608}, {"t": "07-30 06:00", "mwh": 24221}, {"t": "07-30 07:00", "mwh": 25443}, {"t": "07-30 08:00", "mwh": 27591}, {"t": "07-30 09:00", "mwh": 30408}, {"t": "07-30 10:00", "mwh": 31144}, {"t": "07-30 11:00", "mwh": 31537}, {"t": "07-30 12:00", "mwh": 31227}, {"t": "07-30 13:00", "mwh": 30563}, {"t": "07-30 14:00", "mwh": 29651}, {"t": "07-30 15:00", "mwh": 30255}, {"t": "07-30 16:00", "mwh": 31194}, {"t": "07-30 17:00", "mwh": 32347}, {"t": "07-30 18:00", "mwh": 33668}, {"t": "07-30 19:00", "mwh": 34821}, {"t": "07-30 20:00", "mwh": 34453}, {"t": "07-30 21:00", "mwh": 33777}, {"t": "07-30 22:00", "mwh": 32879}, {"t": "07-30 23:00", "mwh": 30616}, {"t": "07-31 00:00", "mwh": 28382}, {"t": "07-31 01:00", "mwh": 27117}, {"t": "07-31 02:00", "mwh": 25599}, {"t": "07-31 03:00", "mwh": 24415}, {"t": "07-31 04:00", "mwh": 23720}, {"t": "07-31 05:00", "mwh": 23299}, {"t": "07-31 06:00", "mwh": 23757}, {"t": "07-31 07:00", "mwh": 24637}, {"t": "07-31 08:00", "mwh": 27092}, {"t": "07-31 09:00", "mwh": 30140}, {"t": "07-31 10:00", "mwh": 30767}, {"t": "07-31 11:00", "mwh": 30296}, {"t": "07-31 12:00", "mwh": 29881}, {"t": "07-31 13:00", "mwh": 11819}, {"t": "07-31 14:00", "mwh": 29886}, {"t": "07-31 15:00", "mwh": 30724}, {"t": "07-31 16:00", "mwh": 31862}, {"t": "07-31 17:00", "mwh": 33033}, {"t": "07-31 18:00", "mwh": 34012}, {"t": "07-31 19:00", "mwh": 35130}, {"t": "07-31 20:00", "mwh": 35140}, {"t": "07-31 21:00", "mwh": 34411}, {"t": "07-31 22:00", "mwh": 33339}, {"t": "07-31 23:00", "mwh": 30992}, {"t": "08-01 00:00", "mwh": 28834}, {"t": "08-01 01:00", "mwh": 27394}, {"t": "08-01 02:00", "mwh": 25998}, {"t": "08-01 03:00", "mwh": 24650}, {"t": "08-01 04:00", "mwh": 24093}, {"t": "08-01 05:00", "mwh": 23776}, {"t": "08-01 06:00", "mwh": 24536}, {"t": "08-01 07:00", "mwh": 25497}, {"t": "08-01 08:00", "mwh": 27255}, {"t": "08-01 09:00", "mwh": 30166}, {"t": "08-01 10:00", "mwh": 31146}, {"t": "08-01 11:00", "mwh": 29982}, {"t": "08-01 12:00", "mwh": 30008}, {"t": "08-01 13:00", "mwh": 29807}, {"t": "08-01 14:00", "mwh": 30372}, {"t": "08-01 15:00", "mwh": 30510}, {"t": "08-01 16:00", "mwh": 31887}, {"t": "08-01 17:00", "mwh": 33085}, {"t": "08-01 18:00", "mwh": 33814}, {"t": "08-01 19:00", "mwh": 34544}, {"t": "08-01 20:00", "mwh": 34038}, {"t": "08-01 21:00", "mwh": 33460}, {"t": "08-01 22:00", "mwh": 32445}, {"t": "08-01 23:00", "mwh": 30537}], "coverage": [{"series": "Compton (LA) \u00b7 PM10", "pct": 42.4}, {"series": "Chula Vista (SD) \u00b7 O3", "pct": 44.4}, {"series": "Chula Vista (SD) \u00b7 PM10", "pct": 49.1}, {"series": "Chula Vista (SD) \u00b7 PM25", "pct": 49.1}, {"series": "Oakland West (SF) \u00b7 O3", "pct": 78.1}, {"series": "Oakland West (SF) \u00b7 NO2", "pct": 78.7}, {"series": "Oakland West (SF) \u00b7 PM25", "pct": 81.6}, {"series": "Downtown Sacramento (SAC) \u00b7 NO2", "pct": 88.9}, {"series": "San Diego - Sherman (SD) \u00b7 O3", "pct": 90.1}, {"series": "Fresno-Foundry Park (FRE) \u00b7 NO2", "pct": 90.3}, {"series": "Downtown Sacramento (SAC) \u00b7 PM25", "pct": 91.0}, {"series": "San Francisco (SF) \u00b7 NO2", "pct": 91.7}, {"series": "San Francisco (SF) \u00b7 O3", "pct": 91.8}, {"series": "San Francisco (SF) \u00b7 PM25", "pct": 92.0}, {"series": "Bercut Dr (SAC) \u00b7 PM25", "pct": 92.8}, {"series": "Downtown Sacramento (SAC) \u00b7 O3", "pct": 93.3}, {"series": "Bercut Dr (SAC) \u00b7 NO2", "pct": 94.0}, {"series": "Los Angeles - N. Mai (LA) \u00b7 PM25", "pct": 94.4}, {"series": "Fresno-Pacific (FRE) \u00b7 PM25", "pct": 95.3}, {"series": "Compton (LA) \u00b7 PM25", "pct": 95.8}, {"series": "Los Angeles - N. Mai (LA) \u00b7 NO2", "pct": 96.1}, {"series": "Fresno-Foundry Park (FRE) \u00b7 PM25", "pct": 96.1}, {"series": "Downtown Sacramento (SAC) \u00b7 PM10", "pct": 96.1}, {"series": "Los Angeles - N. Mai (LA) \u00b7 O3", "pct": 96.2}, {"series": "Los Angeles - N. Mai (LA) \u00b7 PM10", "pct": 96.4}, {"series": "Compton (LA) \u00b7 O3", "pct": 97.6}, {"series": "Compton (LA) \u00b7 NO2", "pct": 97.9}, {"series": "San Diego - Sherman (SD) \u00b7 PM10", "pct": 98.4}, {"series": "San Diego - Sherman (SD) \u00b7 PM25", "pct": 98.4}], "rules": [{"severity": "error", "table": "openaq_measurements", "rule": "required_not_null", "checked": 220482, "failed": 1639}, {"severity": "error", "table": "energy_generation", "rule": "energy_sign", "checked": 70464, "failed": 0}, {"severity": "error", "table": "energy_demand", "rule": "range_demand_positive", "checked": 8760, "failed": 0}, {"severity": "error", "table": "weather_hourly", "rule": "range_humidity_pct", "checked": 43800, "failed": 0}, {"severity": "error", "table": "air_quality_obs", "rule": "range_pm25", "checked": 77651, "failed": 0}, {"severity": "error", "table": "weather_hourly", "rule": "range_precipitation_mm", "checked": 43800, "failed": 0}, {"severity": "error", "table": "weather_hourly", "rule": "range_solar_radiation_wm2", "checked": 43800, "failed": 0}, {"severity": "error", "table": "weather_hourly", "rule": "range_temperature_c", "checked": 43800, "failed": 0}, {"severity": "error", "table": "eia_fuel_type_data", "rule": "reference_code", "checked": 70464, "failed": 0}, {"severity": "error", "table": "eia_region_data", "rule": "reference_code", "checked": 34944, "failed": 0}, {"severity": "error", "table": "open_meteo_hourly", "rule": "reference_code", "checked": 43800, "failed": 0}, {"severity": "error", "table": "openaq_measurements", "rule": "reference_code", "checked": 220482, "failed": 0}, {"severity": "error", "table": "eia_fuel_type_data", "rule": "required_not_null", "checked": 70464, "failed": 0}, {"severity": "error", "table": "energy_generation", "rule": "timestamp_not_future", "checked": 70464, "failed": 0}, {"severity": "error", "table": "air_quality_obs", "rule": "timestamp_not_future", "checked": 218843, "failed": 0}, {"severity": "error", "table": "weather_hourly", "rule": "timestamp_not_future", "checked": 43800, "failed": 0}, {"severity": "error", "table": "energy_demand", "rule": "timestamp_not_future", "checked": 8760, "failed": 0}, {"severity": "error", "table": "energy_demand", "rule": "timestamp_on_hour", "checked": 8760, "failed": 0}, {"severity": "error", "table": "energy_generation", "rule": "timestamp_on_hour", "checked": 70464, "failed": 0}, {"severity": "error", "table": "weather_hourly", "rule": "timestamp_on_hour", "checked": 43800, "failed": 0}, {"severity": "error", "table": "air_quality_obs", "rule": "timestamp_on_hour", "checked": 218843, "failed": 0}, {"severity": "error", "table": "openaq_measurements", "rule": "timestamp_parses", "checked": 220482, "failed": 0}, {"severity": "error", "table": "eia_fuel_type_data", "rule": "timestamp_parses", "checked": 70464, "failed": 0}, {"severity": "error", "table": "open_meteo_hourly", "rule": "timestamp_parses", "checked": 43800, "failed": 0}, {"severity": "error", "table": "eia_region_data", "rule": "timestamp_parses", "checked": 34944, "failed": 0}, {"severity": "error", "table": "eia_region_data", "rule": "unique_key", "checked": 34944, "failed": 0}, {"severity": "error", "table": "openaq_measurements", "rule": "unique_key", "checked": 220482, "failed": 0}, {"severity": "error", "table": "eia_fuel_type_data", "rule": "unique_key", "checked": 70464, "failed": 0}, {"severity": "error", "table": "openaq_measurements", "rule": "unit_known", "checked": 220482, "failed": 0}, {"severity": "error", "table": "openaq_measurements", "rule": "value_numeric", "checked": 220482, "failed": 0}, {"severity": "error", "table": "open_meteo_hourly", "rule": "value_numeric", "checked": 43800, "failed": 0}, {"severity": "error", "table": "eia_fuel_type_data", "rule": "value_numeric", "checked": 70464, "failed": 0}, {"severity": "error", "table": "eia_region_data", "rule": "value_numeric", "checked": 34944, "failed": 0}, {"severity": "warning", "table": "air_quality_obs", "rule": "completeness", "checked": 254040, "failed": 35197}, {"severity": "warning", "table": "energy_generation", "rule": "completeness", "checked": 78840, "failed": 8376}, {"severity": "warning", "table": "energy_generation", "rule": "solar_negative", "checked": 8760, "failed": 3679}, {"severity": "warning", "table": "open_meteo_hourly", "rule": "unique_key", "checked": 43800, "failed": 1320}, {"severity": "warning", "table": "energy_demand", "rule": "demand_vs_forecast", "checked": 8712, "failed": 1048}, {"severity": "warning", "table": "energy_generation", "rule": "solar_zero_at_night", "checked": 3953, "failed": 190}, {"severity": "warning", "table": "energy_demand", "rule": "completeness", "checked": 35040, "failed": 96}, {"severity": "warning", "table": "air_quality_obs", "rule": "pm25_spike", "checked": 76247, "failed": 10}, {"severity": "warning", "table": "energy_demand", "rule": "demand_spike", "checked": 8759, "failed": 2}, {"severity": "warning", "table": "weather_hourly", "rule": "completeness", "checked": 43800, "failed": 0}, {"severity": "info", "table": "energy_demand", "rule": "generation_reconciliation", "checked": 8760, "failed": 1}, {"severity": "info", "table": "open_meteo_hourly", "rule": "source_revision", "checked": 43800, "failed": 0}, {"severity": "info", "table": "openaq_measurements", "rule": "source_revision", "checked": 220482, "failed": 0}, {"severity": "info", "table": "eia_region_data", "rule": "source_revision", "checked": 34944, "failed": 0}, {"severity": "info", "table": "eia_fuel_type_data", "rule": "source_revision", "checked": 70464, "failed": 0}], "issues": [{"type": "completeness", "severity": "warning", "status": "accepted", "n": 5546}, {"type": "solar_negative", "severity": "warning", "status": "accepted", "n": 3679}, {"type": "required_field", "severity": "error", "status": "open", "n": 1639}, {"type": "duplicate_same_value", "severity": "warning", "status": "accepted", "n": 1320}, {"type": "demand_vs_forecast", "severity": "warning", "status": "open", "n": 1048}, {"type": "solar_zero_at_night", "severity": "warning", "status": "open", "n": 190}, {"type": "pm25_spike", "severity": "warning", "status": "open", "n": 10}, {"type": "completeness", "severity": "warning", "status": "open", "n": 4}, {"type": "demand_spike", "severity": "warning", "status": "open", "n": 2}, {"type": "generation_reconciliation", "severity": "info", "status": "open", "n": 1}], "counts": {"generation": 70464, "demand": 8760, "weather": 43800, "air_quality": 218843}, "recon": [{"rule": "reconcile_daily_demand", "failed": 0, "checked": 365}, {"rule": "reconcile_daily_energy_by_fuel", "failed": 0, "checked": 2936}, {"rule": "reconcile_daily_energy_summary", "failed": 0, "checked": 365}, {"rule": "reconcile_daily_environment", "failed": 0, "checked": 1825}, {"rule": "reconcile_daily_temperature", "failed": 0, "checked": 1825}, {"rule": "reconcile_monthly_demand", "failed": 0, "checked": 12}]};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const fmt = (v, d = 1) => { if (v == null) return "—"; const r = Number(Number(v).toFixed(d)); return (Object.is(r, -0) ? 0 : r).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); };
+const tip = document.getElementById("tip");
+function showTip(html, ev) { tip.innerHTML = html; tip.style.opacity = 1; const x = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8); tip.style.left = x + "px"; tip.style.top = (ev.clientY + 14) + "px"; }
+function hideTip() { tip.style.opacity = 0; }
+function table(id, head, rows, numFrom = 1) {
+  const t = document.createElement("table");
+  t.innerHTML = "<thead><tr>" + head.map((h, i) => `<th class="${i >= numFrom ? "num" : ""}">${h}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map(r => "<tr>" + r.map((c, i) => `<td class="${i >= numFrom ? "num" : ""}">${c}</td>`).join("") + "</tr>").join("") + "</tbody>";
+  document.getElementById(id).replaceChildren(t);
+}
+function legend(id, items, square = false) {
+  document.getElementById(id).innerHTML = items.map(([n, c]) => `<span><i class="${square ? "sq" : ""}" style="background:var(${c})"></i>${n}</span>`).join("");
+}
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// Line chart: one y-axis, crosshair + tooltip, direct end labels.
+function lineChart(id, xs, series, { h = 260, yMin, yMax, unit = "", labelEnds = true, dec = 1, rotate = false, every = 1 } = {}) {
+  const host = document.getElementById(id); host.replaceChildren();
+  const W = Math.max(320, host.clientWidth), pad = { l: 46, r: labelEnds ? 128 : 16, t: 10, b: rotate ? 70 : 26 };
+  const all = series.flatMap(s => s.values.filter(v => v != null));
+  const lo = yMin ?? Math.floor(Math.min(...all)), hi = yMax ?? Math.ceil(Math.max(...all));
+  const svg = el("svg", { viewBox: `0 0 ${W} ${h}`, role: "img", "aria-label": host.dataset.label || "" }, host);
+  const x = i => pad.l + (W - pad.l - pad.r) * (xs.length === 1 ? 0.5 : i / (xs.length - 1));
+  const y = v => h - pad.b - (h - pad.t - pad.b) * (v - lo) / (hi - lo || 1);
+  const ticks = 5;
+  for (let k = 0; k <= ticks; k++) {
+    const v = lo + (hi - lo) * k / ticks; el("line", { x1: pad.l, x2: W - pad.r, y1: y(v), y2: y(v), class: "grid-line" }, svg);
+    el("text", { x: pad.l - 6, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = fmt(v, hi - lo < 10 ? 1 : 0);
+  }
+  xs.forEach((lab, i) => { if (i % every) return; const t = el("text", { x: x(i), y: h - pad.b + 16, "text-anchor": rotate ? "end" : "middle" }, svg);
+    if (rotate) t.setAttribute("transform", `rotate(-40 ${x(i)} ${h - pad.b + 16})`); t.textContent = lab; });
+  const cross = el("line", { y1: pad.t, y2: h - pad.b, stroke: css("--text-muted"), "stroke-width": 1, opacity: 0 }, svg);
+  const ends = [];
+  series.forEach(s => {
+    const pts = s.values.map((v, i) => v == null ? null : `${x(i)},${y(v)}`).filter(Boolean).join(" ");
+    el("polyline", { points: pts, fill: "none", stroke: `var(${s.color})`, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+    const li = s.values.length - 1;
+    if (labelEnds) ends.push({ y: y(s.values[li]), s, v: s.values[li], cx: x(li) });
+  });
+  ends.sort((a, b) => a.y - b.y); for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 13) ends[i].y = ends[i - 1].y + 13;
+  ends.forEach(e => { el("circle", { cx: e.cx, cy: y(e.v), r: 3.5, fill: `var(${e.s.color})`, stroke: css("--surface-1"), "stroke-width": 2 }, svg);
+    el("text", { x: e.cx + 8, y: e.y + 4, class: "lbl" }, svg).textContent = `${e.s.name} ${fmt(e.v, dec)}${unit}`; });
+  const dots = series.map(s => el("circle", { r: 4.5, fill: `var(${s.color})`, stroke: css("--surface-1"), "stroke-width": 2, opacity: 0 }, svg));
+  const hit = el("rect", { x: pad.l, y: pad.t, width: W - pad.l - pad.r, height: h - pad.t - pad.b, fill: "transparent" }, svg);
+  hit.addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(xs.length - 1, Math.round((px - pad.l) / ((W - pad.l - pad.r) / (xs.length - 1 || 1)))));
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", .6);
+    series.forEach((s, k) => { const v = s.values[i]; dots[k].setAttribute("opacity", v == null ? 0 : 1); if (v != null) { dots[k].setAttribute("cx", x(i)); dots[k].setAttribute("cy", y(v)); } });
+    showTip(`<b>${xs[i]}</b><br>` + series.map(s => `<span class="dot" style="background:var(${s.color})"></span> ${s.name}: <b>${fmt(s.values[i], dec)}${unit}</b>`).join("<br>"), ev);
+  });
+  hit.addEventListener("mouseleave", () => { cross.setAttribute("opacity", 0); dots.forEach(d => d.setAttribute("opacity", 0)); hideTip(); });
+}
+
+// Horizontal bars: one series, sorted, value labels, zero line for negatives.
+function hbars(id, rows, { unit = "", dec = 1, color = "--s1", ref, rowH = 22, labelW = 150, max } = {}) {
+  const host = document.getElementById(id); host.replaceChildren();
+  const W = Math.max(320, host.clientWidth), pad = { l: labelW, r: 70, t: 6, b: 6 }, h = pad.t + pad.b + rows.length * rowH;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${h}` }, host);
+  const lo = Math.min(0, ...rows.map(r => r.v)), hi = max ?? Math.max(...rows.map(r => r.v));
+  const x = v => pad.l + (W - pad.l - pad.r) * (v - lo) / (hi - lo);
+  rows.forEach((r, i) => {
+    const yy = pad.t + i * rowH, bh = rowH - 6, x0 = x(Math.min(0, r.v)), x1 = x(Math.max(0, r.v));
+    el("text", { x: pad.l - 8, y: yy + bh / 2 + 4, "text-anchor": "end" }, svg).textContent = r.label;
+    const bar = el("rect", { x: x0, y: yy, width: Math.max(1, x1 - x0), height: bh, rx: 4, fill: `var(${r.color || color})` }, svg);
+    el("text", { x: (r.v < 0 ? x(0) + 6 : x1 + 6), y: yy + bh / 2 + 4, "text-anchor": "start", class: "lbl" }, svg).textContent = fmt(r.v, dec) + unit;
+    const hit = el("rect", { x: pad.l, y: yy - 2, width: W - pad.l, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", ev => showTip(`<b>${r.label}</b><br>${fmt(r.v, dec)}${unit}${r.extra ? "<br>" + r.extra : ""}`, ev));
+    hit.addEventListener("mouseleave", hideTip);
+  });
+  if (lo < 0) el("line", { x1: x(0), x2: x(0), y1: 0, y2: h, class: "axis" }, svg);
+  if (ref != null) el("line", { x1: x(ref), x2: x(ref), y1: 0, y2: h, stroke: css("--text-muted"), "stroke-dasharray": "4 4" }, svg);
+}
+
+// Stacked horizontal bars (2 parts) with 2px surface gap.
+function stackBars(id, rows, parts) {
+  const host = document.getElementById(id); host.replaceChildren();
+  const W = Math.max(320, host.clientWidth), rowH = 26, pad = { l: 150, r: 64, t: 4 }, h = pad.t + rows.length * rowH + 4;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${h}` }, host);
+  const hi = Math.max(...rows.map(r => parts.reduce((a, p) => a + (r[p.key] || 0), 0)));
+  const sx = v => (W - pad.l - pad.r) * v / hi;
+  rows.forEach((r, i) => {
+    const yy = pad.t + i * rowH, bh = rowH - 8; let cx = pad.l, total = 0;
+    el("text", { x: pad.l - 8, y: yy + bh / 2 + 4, "text-anchor": "end" }, svg).textContent = r.label;
+    parts.forEach(p => { const v = r[p.key] || 0; if (!v) return; const w = Math.max(2, sx(v));
+      el("rect", { x: cx, y: yy, width: Math.max(1, w - 2), height: bh, rx: 3, fill: `var(${p.color})` }, svg); cx += w; total += v; });
+    el("text", { x: cx + 6, y: yy + bh / 2 + 4, class: "lbl" }, svg).textContent = total.toLocaleString("en-US");
+    const hit = el("rect", { x: pad.l, y: yy - 3, width: W - pad.l, height: rowH, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", ev => showTip(`<b>${r.label}</b> (${r.sev})<br>` + parts.map(p => `<span class="dot" style="background:var(${p.color})"></span> ${p.name}: <b>${(r[p.key] || 0).toLocaleString("en-US")}</b>`).join("<br>"), ev));
+    hit.addEventListener("mouseleave", hideTip);
+  });
+}
+
+// Heatmap: sequential one-hue ramp, values printed in cells.
+function heatmap(id, rows, cols, matrix) {
+  const host = document.getElementById(id); host.replaceChildren();
+  const W = Math.max(320, host.clientWidth), pad = { l: 46, t: 22 }, cw = (W - pad.l) / cols.length, ch = 30, h = pad.t + rows.length * ch;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${h}` }, host);
+  const ramp = ["--seq-0", "--seq-1", "--seq-2", "--seq-3", "--seq-4"];
+  cols.forEach((c, j) => { el("text", { x: pad.l + j * cw + cw / 2, y: 14, "text-anchor": "middle" }, svg).textContent = c; });
+  rows.forEach((r, i) => {
+    el("text", { x: pad.l - 8, y: pad.t + i * ch + ch / 2 + 4, "text-anchor": "end" }, svg).textContent = r;
+    matrix[i].forEach((v, j) => {
+      const step = v === 0 ? 0 : Math.min(4, v); const fill = `var(${ramp[step]})`;
+      const rc = el("rect", { x: pad.l + j * cw + 1, y: pad.t + i * ch + 1, width: cw - 2, height: ch - 2, rx: 4, fill }, svg);
+      if (v > 0) { const t = el("text", { x: pad.l + j * cw + cw / 2, y: pad.t + i * ch + ch / 2 + 4, "text-anchor": "middle", class: "lbl" }, svg);
+        t.textContent = v; if (step >= 3) t.setAttribute("style", "fill:#fff"); }
+      rc.addEventListener("mousemove", ev => showTip(`<b>${r} · ${cols[j]}</b><br>${v} day${v === 1 ? "" : "s"} above 35 µg/m³`, ev));
+      rc.addEventListener("mouseleave", hideTip);
+    });
+  });
+}
+
+function render() {
+  const D = DATA, M = D.monthly;
+  // phases
+  const ph = [["1 Requirements","done"],["2 Collection & DB","done"],["3 ETL","done"],["4 Data quality","done"],["5 Analytics & KPIs","done"],["6 Testing & handover","planned"]];
+  document.getElementById("phases").innerHTML = ph.map(([n, s]) => `<div class="phase"><b>${n}</b><span class="st"><span class="dot" style="background:${s === "done" ? "var(--good)" : "var(--warning)"}"></span>${s === "done" ? "✓ Done" : "◷ Planned"}</span></div>`).join("");
+  // tiles
+  const tiles = [["48.9 %","Renewable share of generation"],["40.7 %","Renewable share of demand"],["16.0 %","Net import share of demand"],
+    ["224.0","Electricity demand, TWh"],["43,860","Peak hourly demand, MWh (21 Aug)"],["17.1 °C","Statewide mean temperature"],
+    ["341,867","Validated hourly rows"],["0","Records failing a hard rule"]];
+  document.getElementById("tiles").innerHTML = tiles.map(([v, l]) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+  // share lines
+  const shareS = [{ name: "Renewable % of generation", color: "--s1", values: M.map(m => m.renew_gen) },
+                  { name: "Renewable % of demand", color: "--s2", values: M.map(m => m.renew_dem) },
+                  { name: "Net imports % of demand", color: "--s3", values: M.map(m => m.imports) }];
+  legend("lg-share", shareS.map(s => [s.name, s.color]));
+  const shortNames = ["Renew. % gen", "Renew. % demand", "Net imports"];
+  lineChart("c-share", MONTHS, shareS.map((s, i) => ({ ...s, name: shortNames[i] })), { yMin: 0, yMax: 75, unit: "%" });
+  table("t-share", ["Month","Renewable % gen","Renewable % demand","Net import %"], M.map(m => [m.m, fmt(m.renew_gen), fmt(m.renew_dem), fmt(m.imports)]));
+  // fuels
+  const names = { NG: "Natural gas", SUN: "Solar", WAT: "Hydro", WND: "Wind", NUC: "Nuclear", OIL: "Petroleum", GEO: "Geothermal*", COL: "Coal", OTH: "Other / storage" };
+  hbars("c-fuel", D.fuels.map(f => ({ label: names[f.fuel] || f.fuel, v: f.twh, extra: f.fuel === "GEO" ? "*reported separately only from 16 Dec" : "" })), { unit: " TWh", dec: 2, labelW: 120 });
+  table("t-fuel", ["Fuel","TWh"], D.fuels.map(f => [names[f.fuel], fmt(f.twh, 2)]));
+  // load factor
+  lineChart("c-lf", MONTHS, [{ name: "Load factor", color: "--s1", values: M.map(m => m.load_factor) }], { yMin: 60, yMax: 90, unit: "%", labelEnds: false });
+  table("t-lf", ["Month","Load factor %","Demand TWh"], M.map(m => [m.m, fmt(m.load_factor), fmt(m.demand_twh, 2)]));
+  // temps
+  const cityNames = { LA: "Los Angeles", SF: "San Francisco", SAC: "Sacramento", FRE: "Fresno", SD: "San Diego" };
+  const order = ["FRE", "SAC", "LA", "SD", "SF"], cols5 = ["--s1", "--s2", "--s3", "--s4", "--s5"];
+  const tS = order.map((c, i) => ({ name: c, color: cols5[i], values: D.temps[c] }));
+  legend("lg-temp", order.map((c, i) => [cityNames[c], cols5[i]]));
+  lineChart("c-temp", MONTHS, tS, { yMin: 5, yMax: 35, unit: "°" });
+  table("t-temp", ["Month", ...order], MONTHS.map((m, i) => [m, ...order.map(c => fmt(D.temps[c][i]))]));
+  // pm heatmap
+  const pmOrder = ["LA", "FRE", "SD", "SAC", "SF"];
+  heatmap("c-pm", pmOrder, MONTHS, pmOrder.map(c => D.pm25_days[c]));
+  table("t-pm", ["City", ...MONTHS, "Total"], pmOrder.map(c => [cityNames[c], ...D.pm25_days[c], D.pm25_days[c].reduce((a, b) => a + b, 0)]));
+  // glitch
+  lineChart("c-glitch", D.glitch.map(g => g.t), [{ name: "Hourly demand", color: "--s1", values: D.glitch.map(g => g.mwh) }],
+    { yMin: 0, yMax: 40000, unit: " MWh", dec: 0, labelEnds: false, rotate: true, every: document.getElementById("c-glitch").clientWidth < 600 ? 12 : 6, h: 240 });
+  table("t-glitch", ["Local hour","Demand MWh"], D.glitch.map(g => [g.t, g.mwh.toLocaleString("en-US")]));
+  // issues
+  const iss = {};
+  D.issues.forEach(r => { const k = r.type; iss[k] = iss[k] || { label: k.replaceAll("_", " "), sev: r.severity, open: 0, accepted: 0 }; iss[k][r.status] += r.n; });
+  const issRows = Object.values(iss).sort((a, b) => (b.open + b.accepted) - (a.open + a.accepted));
+  const parts = [{ key: "open", name: "Open", color: "--s2" }, { key: "accepted", name: "Accepted", color: "--s1" }];
+  legend("lg-iss", parts.map(p => [p.name, p.color]), true);
+  stackBars("c-iss", issRows, parts);
+  table("t-iss", ["Issue type","Severity","Open","Accepted"], issRows.map(r => [r.label, r.sev, r.open, r.accepted]), 2);
+  // coverage
+  hbars("c-cov", D.coverage.map(c => ({ label: c.series, v: c.pct })), { unit: "%", dec: 1, ref: 90, rowH: 18, labelW: 240, max: 100 });
+  table("t-cov", ["Series","% of hours"], [...D.coverage].reverse().map(c => [c.series, fmt(c.pct)]));
+  // recon
+  document.getElementById("recon").innerHTML = D.recon.map(r => `<div><span>${r.rule.replace("reconcile_", "").replaceAll("_", " ")}</span><span class="status" style="color:${r.failed ? "var(--critical)" : "var(--good)"}">${r.failed ? "✗ " + r.failed + " differ" : "✓ 0 differences"}</span></div>`).join("");
+  // findings
+  const F = [
+    ["Phase 2 · Data source", "EIA timestamps mark the end of the hour", "Confirmed against a full year of solar vs radiation (r = 0.930 at −1 h). Loads were shifted so the data covers exactly the California year."],
+    ["Phase 2 · Storage", "280 MB → 8.4 MB raw layer", "Storing each API request as one compressed batch instead of one row per reading, with every value unchanged."],
+    ["Phase 2 · Stations", "A duplicate Sacramento monitor caught", "Station 40504 was the same site as 26663 under a new ID with no 2025 data; selection now checks each sensor's own dates."],
+    ["Phase 2 · Coverage", "Daylight-saving days missing from EIA", "The demand forecast is missing exactly 9 Mar and 2 Nov; interchange is missing the day before each."],
+    ["Phase 2 · New fuel", "Geothermal appears on 16 Dec 2025", "EIA started reporting GEO separately mid-December; added as a renewable fuel."],
+    ["Phase 3 · ETL", "Re-running changes nothing", "The second full transform wrote 0 of 341,867 rows; a rebuild equals an incremental load."],
+    ["Phase 4 · Quality", "One bad EIA hour on 31 Jul", "Demand dips to 11,819 MWh for one hour; the same hour fails the generation-vs-net-generation check (8.2 %)."],
+    ["Phase 4 · Quality", "Day-ahead forecast is a poor proxy", "Off by more than 20 % in 1,048 hours (12 %); mean error 8.2 %; not a timing offset."],
+    ["Phase 5 · KPIs", "All 6 reconciliation checks pass", "Every daily and monthly figure equals the hourly data it was built from."],
+  ];
+  document.getElementById("findings").innerHTML = F.map(([t, b, p]) => `<div class="finding"><div class="tag">${t}</div><b>${b}</b><p>${p}</p></div>`).join("");
+}
+document.getElementById("theme").addEventListener("click", () => {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark" ||
+    (!document.documentElement.hasAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.setAttribute("data-theme", dark ? "light" : "dark"); render();
+});
+render();
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(render, 150); });
+</script>
+</body>
+</html>
