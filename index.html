@@ -94,7 +94,7 @@ footer { margin-top:40px; color:var(--text-muted); font-size:.8rem; }
 </header>
 
 <div class="phases" id="phases"></div>
-<p class="muted">Phases 1–5 complete and reviewed; Phase 6 (testing and handover) is planned. Data: calendar year 2025, California local time.</p>
+<p class="muted">All six phases complete and reviewed. Phase 6 results: 202 automated tests passing; a full rebuild from raw data reproduces the processed tables exactly and the analytics tables to within 1e-15; every KPI view answers in under 5 ms. Data: calendar year 2025, California local time.</p>
 
 <div class="tiles" id="tiles"></div>
 
@@ -292,7 +292,7 @@ function heatmap(id, rows, cols, matrix) {
 function render() {
   const D = DATA, M = D.monthly;
   // phases
-  const ph = [["1 Requirements","done"],["2 Collection & DB","done"],["3 ETL","done"],["4 Data quality","done"],["5 Analytics & KPIs","done"],["6 Testing & handover","planned"]];
+  const ph = [["1 Requirements","done"],["2 Collection & DB","done"],["3 ETL","done"],["4 Data quality","done"],["5 Analytics & KPIs","done"],["6 Testing & handover","done"]];
   document.getElementById("phases").innerHTML = ph.map(([n, s]) => `<div class="phase"><b>${n}</b><span class="st"><span class="dot" style="background:${s === "done" ? "var(--good)" : "var(--warning)"}"></span>${s === "done" ? "✓ Done" : "◷ Planned"}</span></div>`).join("");
   // tiles
   const tiles = [["48.9 %","Renewable share of generation"],["40.7 %","Renewable share of demand"],["16.0 %","Net import share of demand"],
